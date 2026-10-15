@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# Check if the correct number of arguments are provided
+if [ "$#" -ne 2 ]; then
+	echo "Usage: bash eucentriccorrection.sh <grid_square> <eucentric_height>"
+	exit 1
+fi
+
+# Assign input arguments to variables
+grid_square=$1
+eucentric_height=$2
+
+# Step 1: Modify the AutoEucentricPerformed tag in the Metadata file
+metadata_file="Metadata/GridSquare_${grid_square}.dm"
+if [ -f "$metadata_file" ]; then
+	sed -i 's/<AutoEucentricPerformed>false<\/AutoEucentricPerformed>/<AutoEucentricPerformed>true<\/AutoEucentricPerformed>/' "$metadata_file"
+else
+	echo "Metadata file $metadata_file not found!"
+	exit 1
+fi
+
+# Step 2: Convert eucentric height to scientific notation in meters
+# Convert microns to meters
+eucentric_height_m=$(awk "BEGIN {printf \"%.3E\", $eucentric_height * 1e-6}")
+
+# Step 3: Find the most recent .xml file and update the <Z> tag
+xml_dir="Images-Disc1/GridSquare_${grid_square}"
+if [ -d "$xml_dir" ]; then
+	recent_xml=$(ls -t "$xml_dir"/*.xml 2>/dev/null | head -n 1)
+	if [ -n "$recent_xml" ]; then
+    	sed -i "s|<Z>.*</Z>|<Z>${eucentric_height_m}</Z>|" "$recent_xml"
+	else
+    	echo "No .xml files found in $xml_dir!"
+    	exit 1
+	fi
+else
+	echo "Directory $xml_dir not found!"
+	exit 1
+fi
+
+echo "Eucentric correction completed successfully."
